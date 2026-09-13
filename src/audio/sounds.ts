@@ -16,6 +16,9 @@ const SFX_FILES: Record<SfxName, string> = {
 let muted = false;
 const sfxCache = new Map<SfxName, HTMLAudioElement>();
 let bgmEl: HTMLAudioElement | null = null;
+// タブがバックグラウンドの間にBGMが鳴り続けないようにするため、
+// 「対戦画面にいる間はBGMを流すべきか」を覚えておく(ミュートとは独立)
+let bgmShouldBePlaying = false;
 
 function getSfxElement(name: SfxName): HTMLAudioElement {
   let el = sfxCache.get(name);
@@ -74,12 +77,14 @@ export function playSfx(name: SfxName, options?: PlaySfxOptions) {
 }
 
 export function startBgm() {
+  bgmShouldBePlaying = true;
   const el = getBgmElement();
   if (muted) return;
   el.play().catch((err) => console.warn('[audio] startBgm failed', err));
 }
 
 export function stopBgm() {
+  bgmShouldBePlaying = false;
   bgmEl?.pause();
 }
 
@@ -125,4 +130,14 @@ function unlockAllAudioElements() {
 if (typeof window !== 'undefined') {
   window.addEventListener('pointerdown', unlockAllAudioElements, { once: true });
   window.addEventListener('touchstart', unlockAllAudioElements, { once: true });
+
+  // スマホでブラウザをバックグラウンドに回してもBGMが鳴り続けてしまわないよう、
+  // 非表示になったら一時停止し、再び表示されたら(対戦画面にいた場合のみ)再開する
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      bgmEl?.pause();
+    } else if (bgmShouldBePlaying && !muted) {
+      bgmEl?.play().catch((err) => console.warn('[audio] resume on visible failed', err));
+    }
+  });
 }

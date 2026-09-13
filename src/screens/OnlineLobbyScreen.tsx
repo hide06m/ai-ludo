@@ -81,6 +81,9 @@ export function OnlineLobbyScreen() {
             value={name}
             maxLength={20}
             placeholder="ニックネーム"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
             onChange={(e) => setName(e.target.value)}
           />
         </label>
@@ -93,7 +96,12 @@ export function OnlineLobbyScreen() {
               value={roomCode}
               maxLength={4}
               placeholder="ABCD"
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              style={{ textTransform: 'uppercase' }}
+              onChange={(e) => setRoomCode(e.target.value)}
             />
           </label>
         )}
