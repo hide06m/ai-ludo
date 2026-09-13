@@ -36,7 +36,10 @@ interface SceneProps {
 function getInitialCameraPosition(): [number, number, number] {
   if (typeof window === 'undefined') return [0, 14.5, 11.3];
   const aspect = window.innerWidth / window.innerHeight;
-  const scale = aspect < 1 ? Math.min(1.8, 1 / aspect) : 1;
+  // スマホの縦長画面(aspect比が小さいほど横方向の視野が狭くなる)でも盤面の横幅が
+  // 画面に収まるよう、狭い分だけカメラを後退させる。上限はOrbitControlsのmaxDistanceと
+  // 整合させておくこと(そちらが足りないと、ここで後退させてもズームインし直されてしまう)
+  const scale = aspect < 1 ? Math.min(3, 1 / aspect) : 1;
   return [0, 14.5 * scale, 11.3 * scale];
 }
 
@@ -158,7 +161,7 @@ export function Scene({
         rotateSpeed={0.6}
         zoomSpeed={0.7}
         minDistance={9}
-        maxDistance={26}
+        maxDistance={56}
         minPolarAngle={Math.PI / 7}
         maxPolarAngle={Math.PI / 2.3}
       />
