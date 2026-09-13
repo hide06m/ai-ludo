@@ -28,9 +28,11 @@ export type ClientMessage =
   | { type: 'start_game' }
   | { type: 'roll' }
   | { type: 'move'; pieceId: string }
-  | { type: 'leave_room' };
+  | { type: 'leave_room' }
+  | { type: 'ping' };
 
 export type ServerMessage =
   | { type: 'joined'; playerId: string; room: RoomStateDTO }
   | { type: 'room_state'; room: RoomStateDTO }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  | { type: 'pong' };

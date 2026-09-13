@@ -28,6 +28,7 @@ export function GameScreen() {
   const onlinePlayerId = useAppStore((s) => s.online.playerId);
   const lastCapture = useAppStore((s) => s.lastCapture);
   const remoteMove = useAppStore((s) => s.remoteMove);
+  const onlineStatus = useAppStore((s) => s.online.status);
 
   const [diceRolling, setDiceRolling] = useState(false);
   const [muted, setMutedState] = useState(isMuted());
@@ -196,6 +197,12 @@ export function GameScreen() {
           onDiceClick={isHumanTurn && game.phase === 'awaiting_roll' && !diceRolling ? rollWithAnimation : undefined}
         />
       </div>
+
+      {mode === 'online' && onlineStatus !== 'open' && (
+        <div className="online-connection-banner">
+          {onlineStatus === 'connecting' ? '再接続しています…' : '接続が切れました。再接続を試みています…'}
+        </div>
+      )}
 
       <div className="overlay-top">
         <div className="turn-indicator" style={{ borderColor: COLOR_HEX[color] }}>

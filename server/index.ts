@@ -22,6 +22,12 @@ import {
 const PORT = Number(process.env.PORT ?? 8787);
 /** 通信切断(リロード・回線切れ等)から再接続するための猶予時間 */
 const ROOM_EMPTY_GRACE_MS = 2 * 60 * 1000;
+/**
+ * pingを送る間隔。TCP接続が(モバイル回線の切り替えやプロキシのタイムアウトなどで)
+ * 見た目上は繋がったまま中身だけ死んでいる状態を検出するためのハートビート。
+ * 前回のpingにpongが返っていなければ切断済みとみなして強制終了する。
+ */
+const HEARTBEAT_INTERVAL_MS = 30 * 1000;
 
 interface Client {
   /**
@@ -32,6 +38,8 @@ interface Client {
   id: string | null;
   ws: WebSocket;
   roomCode: string | null;
+  /** 直前のping送信以降にpongが返ってきたか。ハートビートでの生死判定に使う */
+  isAlive: boolean;
 }
 
 const clients = new Map<WebSocket, Client>();
@@ -97,6 +105,9 @@ function handleMessage(client: Client, raw: string) {
   }
 
   switch (msg.type) {
+    case 'ping':
+      send(client.ws, { type: 'pong' });
+      return;
     case 'create_room': {
       client.id = msg.playerId;
       const room = createRoom(client.id, msg.name.slice(0, 20), msg.rules);
@@ -180,10 +191,13 @@ function applyRoomAction(
 const wss = new WebSocketServer({ port: PORT });
 
 wss.on('connection', (ws) => {
-  const client: Client = { id: null, ws, roomCode: null };
+  const client: Client = { id: null, ws, roomCode: null, isAlive: true };
   clients.set(ws, client);
 
   ws.on('message', (data) => handleMessage(client, data.toString()));
+  ws.on('pong', () => {
+    client.isAlive = true;
+  });
 
   ws.on('close', () => {
     clients.delete(ws);
@@ -198,5 +212,16 @@ wss.on('connection', (ws) => {
     }
   });
 });
+
+setInterval(() => {
+  for (const client of clients.values()) {
+    if (!client.isAlive) {
+      client.ws.terminate(); // 'close'イベントが発火し、通常の切断処理に合流する
+      continue;
+    }
+    client.isAlive = false;
+    client.ws.ping();
+  }
+}, HEARTBEAT_INTERVAL_MS);
 
 console.log(`[ai-ludo server] listening on ws://localhost:${PORT}`);

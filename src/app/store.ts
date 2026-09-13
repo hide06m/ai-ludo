@@ -167,6 +167,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       (status) => {
         set((s) => ({ online: { ...s.online, status } }));
         if (status === 'open') client.send({ type: 'create_room', playerId, name, rules });
+        if (status === 'closed') scheduleAutoReconnect(get);
       },
     );
     set({ mode: 'online', game: null, lastCapture: null, online: { ...INITIAL_ONLINE_STATE, client, status: 'connecting' } });
@@ -181,9 +182,17 @@ export const useAppStore = create<AppStore>((set, get) => ({
       (status) => {
         set((s) => ({ online: { ...s.online, status } }));
         if (status === 'open') client.send({ type: 'join_room', playerId, roomCode, name });
+        if (status === 'closed') scheduleAutoReconnect(get);
       },
     );
-    set({ mode: 'online', game: null, lastCapture: null, online: { ...INITIAL_ONLINE_STATE, client, status: 'connecting' } });
+    // game/lastCapture/online.room/online.playerIdはあえてリセットしない: これは新規参加
+    // (その時点でどうせ全てnull)と、不意の切断からの自動再接続(進行中のgame/roomをそのまま
+    // 保持し、再接続完了までの間もゲーム画面が「対局データなし」で真っ白にならないようにする)
+    // の両方から呼ばれるため
+    set((s) => ({
+      mode: 'online',
+      online: { ...INITIAL_ONLINE_STATE, client, status: 'connecting', room: s.online.room, playerId: s.online.playerId },
+    }));
     client.connect();
   },
 
@@ -248,6 +257,23 @@ function detectMoverId(before: GameState, next: GameState): string | undefined {
     return b.step !== p.step || (b.status === 'home' && p.status === 'active');
   });
   return moved?.id;
+}
+
+/**
+ * WebSocket接続が(意図した退室ではなく)不意に切れた場合、少し待ってから
+ * 直前と同じ部屋への再接続を自動で試みる。モバイル回線の切り替えや、
+ * サーバー側のハートビートによる切断検知(server/index.ts参照)などで、
+ * 見た目上は繋がっているのに実際には通信できていない状態になった際、
+ * ユーザーが手動で「前回の部屋に再接続する」を押さなくても復帰できるようにする。
+ */
+function scheduleAutoReconnect(get: () => AppStore) {
+  setTimeout(() => {
+    const s = get();
+    // 既にleaveOnline/backToTitleでmodeが変わっていれば、意図した退室なので何もしない。
+    // 既に別の接続試行が始まっている(statusがclosed以外)場合も何もしない
+    if (s.mode !== 'online' || s.online.status !== 'closed') return;
+    s.reconnectOnline();
+  }, 1500);
 }
 
 /**
