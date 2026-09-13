@@ -1,0 +1,502 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #101013;
+  color: #f0f0f0;
+  font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+}
+
+.screen {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+
+.screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.screen-center {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.subtitle {
+  color: #aaa;
+  margin-top: -4px;
+}
+
+.primary-button {
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 28px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 12px;
+}
+.primary-button:disabled {
+  background: #444;
+  cursor: not-allowed;
+}
+
+button {
+  font-family: inherit;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #9ab;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.screen-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  justify-content: center;
+}
+.screen-actions button {
+  white-space: nowrap;
+  padding: 14px 28px;
+  border-radius: 8px;
+  font-size: 16px;
+  min-width: 140px;
+}
+.screen-actions .primary-button {
+  margin-top: 0;
+}
+
+.rule-group {
+  border: 1px solid #333;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  padding: 10px 16px;
+}
+.rule-group legend {
+  padding: 0 6px;
+  color: #ccc;
+}
+.rule-description {
+  font-size: 13px;
+  font-weight: 600;
+  color: #bbb;
+  margin: 0 0 10px;
+  line-height: 1.6;
+}
+.rule-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 16px;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin: 20px 0;
+}
+.color-swatch {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  border: 2px solid #444;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes rank-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ranking-list {
+  list-style: none;
+  padding: 0;
+  font-size: 18px;
+}
+.ranking-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  opacity: 0;
+  animation: rank-in 0.4s ease-out forwards;
+}
+.ranking-list li.is-human {
+  font-weight: bold;
+}
+.ranking-list li.rank-1 {
+  font-size: 22px;
+  color: #ffd54f;
+}
+.rank-crown {
+  font-size: 20px;
+}
+.dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.game-screen {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+.scene-wrap {
+  position: absolute;
+  inset: 0;
+}
+
+.overlay-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent);
+  /* オーバーレイの余白部分が盤面のクリックを奪わないよう、既定では素通しにする */
+  pointer-events: none;
+}
+.overlay-top .link-button {
+  pointer-events: auto;
+}
+.overlay-top-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.rules-info {
+  position: relative;
+  display: inline-block;
+}
+.rule-popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  min-width: 200px;
+  background: rgba(20, 20, 20, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  pointer-events: auto;
+}
+.rule-popover-title {
+  color: #aaa;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.rule-popover-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
+}
+.rule-popover-wide {
+  min-width: 240px;
+  max-width: 280px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.rule-popover-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  position: sticky;
+  top: 0;
+  background: inherit;
+  padding-bottom: 4px;
+}
+.rule-tab-button {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  border-radius: 6px;
+  color: #bbb;
+  font-size: 12px;
+  padding: 5px 4px;
+  cursor: pointer;
+}
+.rule-tab-button.active {
+  background: #2e7d32;
+  color: #fff;
+}
+.rule-popover-body {
+  margin: 2px 0 0;
+  color: #ccc;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.rule-popover-item {
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.rule-popover-item:first-of-type {
+  border-top: none;
+}
+.rule-popover-illustration {
+  margin-top: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 4px;
+}
+.rule-popover-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #777;
+  text-align: right;
+}
+.turn-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  padding: 6px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  font-weight: bold;
+}
+.turn-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.overlay-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 14px 20px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), transparent);
+  /* オーバーレイの余白部分(コントロールとログの間など)が盤面手前のコマのクリックを
+     奪ってしまわないよう、既定では素通しにし、実際に操作する要素だけ有効化する */
+  pointer-events: none;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+.move-choices {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.move-choices button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #666;
+  background: #222;
+  color: white;
+  cursor: pointer;
+}
+
+.move-hint {
+  font-size: 12px;
+  color: #ddd;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.log-panel {
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 280px;
+  max-height: 140px;
+  overflow-y: auto;
+  color: #ddd;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  padding: 6px 10px;
+  /* ログ欄自体は独立してスクロールさせ、ここでのドラッグ/ホイール操作が
+     背後の盤面カメラ(OrbitControls)に伝わらないようにする */
+  pointer-events: auto;
+}
+.log-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 0;
+}
+.log-line:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.log-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.online-reconnect {
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 8px;
+}
+.online-reconnect .subtitle {
+  margin: 0 0 4px;
+}
+
+.online-lobby-tabs {
+  max-width: 280px;
+  margin: 8px auto 4px;
+}
+
+.online-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+  margin-top: 8px;
+}
+.online-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  font-size: 13px;
+  color: #bbb;
+}
+.online-form-row input {
+  background: #1c1c1f;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: white;
+  font-size: 16px;
+}
+
+.online-error {
+  color: #ef5350;
+  font-size: 13px;
+  margin: 0;
+}
+
+.online-player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 16px 0;
+}
+.online-player-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.online-player-row.is-me {
+  background: rgba(255, 255, 255, 0.1);
+}
+.online-player-name {
+  flex: 1;
+  text-align: left;
+}
+.online-player-color {
+  color: #aaa;
+  font-size: 13px;
+}
+
+.online-color-grid {
+  grid-template-columns: repeat(4, 1fr);
+  margin: 8px 0 0;
+}
+.online-color-grid .color-swatch {
+  width: 64px;
+  height: 64px;
+  font-size: 13px;
+}
+
+/* スマホなど幅の狭い画面向けレイアウト */
+@media (max-width: 520px) {
+  .screen {
+    padding: 24px 16px;
+  }
+  .color-swatch {
+    width: 100px;
+    height: 100px;
+    font-size: 16px;
+  }
+
+  .overlay-top {
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .turn-indicator {
+    font-size: 13px;
+    padding: 5px 12px;
+  }
+
+  .overlay-bottom {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px 12px 14px;
+    gap: 8px;
+  }
+  .controls {
+    flex-direction: column;
+    order: 1;
+    width: 100%;
+  }
+  .primary-button {
+    width: 100%;
+    padding: 12px 20px;
+  }
+  .log-panel {
+    order: 3;
+    max-width: none;
+    width: 100%;
+    max-height: 72px;
+    text-align: left;
+  }
+}

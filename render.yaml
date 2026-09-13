@@ -1,0 +1,27 @@
+services:
+  # オンライン対戦用WebSocketサーバー(Node.js)
+  - type: web
+    name: ai-ludo-server
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npx tsx server/index.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  # フロントエンド(Reactアプリの静的ビルド)
+  - type: web
+    name: ai-ludo-web
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      # ai-ludo-serverのデプロイ完了後に発行されるURLを
+      # wss://ai-ludo-server-xxxx.onrender.com のような形で設定してから再デプロイする
+      - key: VITE_WS_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

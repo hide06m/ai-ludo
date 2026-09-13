@@ -1,0 +1,271 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { pickCpuPieceId, useAppStore } from '../app/store';
+import { isMuted, playSfx, setMuted, startBgm, stopBgm } from '../audio/sounds';
+import { RulesInfoButton } from '../components/RulesInfoButton';
+import { currentColor, getCurrentLegalMoves } from '../game/turn';
+import { COLORS, type Color } from '../game/types';
+import { COLOR_HEX } from '../render/colors';
+import { Scene } from '../render/Scene';
+
+const COLOR_LABEL: Record<Color, string> = { red: '赤', blue: '青', yellow: '黄', green: '緑' };
+const LOG_HISTORY_LIMIT = 30;
+
+/** ログ行の先頭にある色名(またはcolor-Nのコマid)から、行頭に添える色を判定する */
+function detectLogColor(line: string): Color | undefined {
+  return COLORS.find((c) => line.startsWith(c));
+}
+
+export function GameScreen() {
+  const game = useAppStore((s) => s.game);
+  const mode = useAppStore((s) => s.mode);
+  const humanColor = useAppStore((s) => s.humanColor);
+  const rules = useAppStore((s) => s.rules);
+  const roll = useAppStore((s) => s.roll);
+  const move = useAppStore((s) => s.move);
+  const backToTitle = useAppStore((s) => s.backToTitle);
+  const leaveOnline = useAppStore((s) => s.leaveOnline);
+  const onlineRoom = useAppStore((s) => s.online.room);
+  const onlinePlayerId = useAppStore((s) => s.online.playerId);
+  const lastCapture = useAppStore((s) => s.lastCapture);
+
+  const [diceRolling, setDiceRolling] = useState(false);
+  const [muted, setMutedState] = useState(isMuted());
+  const [captureOverride, setCaptureOverride] = useState<{ pieceId: string; fromStep: number; moverId: string } | null>(
+    null,
+  );
+  const [pendingMovePieceId, setPendingMovePieceId] = useState<string | null>(null);
+  const cpuTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoMoveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rollingRef = useRef(false); // state更新の非同期性に関係なく多重ロールを防ぐ同期ガード
+  const captureSoundPlayed = useRef(false); // 到着検知とフォールバックタイマーで弾き飛ばし音が二重に鳴らないようにする
+  const logRef = useRef<HTMLDivElement>(null);
+  const prevLogLength = useRef(0);
+  const prevRankingsLength = useRef(0);
+
+  // 対戦画面の間だけBGMを再生する
+  useEffect(() => {
+    startBgm();
+    return () => stopBgm();
+  }, []);
+
+  // ログが増えるたびに末尾(最新行)へ自動スクロールし、「あがり」の行が増えたら効果音を鳴らす
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+    const log = game?.log ?? [];
+    const newLines = log.slice(prevLogLength.current);
+    if (newLines.some((line) => line.includes('あがりました'))) {
+      playSfx('finish');
+    }
+    // オンライン対戦では移動/弾き飛ばしがサーバー発の状態更新として届くだけで、
+    // ローカルでpieceIdを起点にした到着検知(下のcaptureOverride/pendingMovePieceId)が使えないため、
+    // ログの文言から効果音のタイミングを判定する簡易的な方式にする
+    if (mode === 'online') {
+      for (const line of newLines) {
+        if (line.includes('弾き飛ばされて')) playSfx('capture');
+        else if (line.includes('に移動')) playSfx('move');
+      }
+    }
+    prevLogLength.current = log.length;
+  }, [game?.log.length, mode]);
+
+  // 1〜3位が確定した瞬間に拍手を鳴らす(順位が下がるほど、鳴らす長さを1秒ずつ短くする)
+  useEffect(() => {
+    const rankingsLength = game?.rankings.length ?? 0;
+    const newRank = rankingsLength; // 新たに順位が確定した人の順位(1位, 2位, 3位…)
+    if (rankingsLength > prevRankingsLength.current && newRank <= 3) {
+      playSfx('victory', { fadeOutAfterMs: 3000 - (newRank - 1) * 1000 });
+    }
+    prevRankingsLength.current = rankingsLength;
+  }, [game?.rankings.length]);
+
+  // 弾き飛ばし発生時、動かしたコマが実際にそのマスへ到着するまでは
+  // 弾かれたコマを元の位置に留めて見せ、到着と同時に自陣へ戻す。
+  // 到着検知(onMoverArrived)を主とし、万一発火しなかった場合の保険として推定時間のタイマーも張る
+  useEffect(() => {
+    if (!lastCapture) return;
+    captureSoundPlayed.current = false;
+    setCaptureOverride({ pieceId: lastCapture.pieceId, fromStep: lastCapture.fromStep, moverId: lastCapture.moverId });
+    const remaining = lastCapture.atMs + lastCapture.delayMs - Date.now();
+    const timer = setTimeout(() => {
+      if (!captureSoundPlayed.current) {
+        captureSoundPlayed.current = true;
+        playSfx('capture');
+      }
+      setCaptureOverride(null);
+    }, Math.max(0, remaining) + 500);
+    return () => {
+      clearTimeout(timer);
+      // 次の弾き飛ばしが短時間で連続発生し、この弾き飛ばしの到着検知・保険タイマーが
+      // 発火する前にエフェクトが再実行された場合、音が鳴らないまま消えてしまうのを防ぐ
+      if (!captureSoundPlayed.current) {
+        captureSoundPlayed.current = true;
+        playSfx('capture');
+      }
+    };
+  }, [lastCapture]);
+
+  // 弾いたコマが実際に敵のマスへ到着した瞬間に弾き飛ばし音を鳴らす(動き始めではなく弾いた時)
+  const handleMoverArrived = () => {
+    if (!captureSoundPlayed.current) {
+      captureSoundPlayed.current = true;
+      playSfx('capture');
+    }
+    setCaptureOverride(null);
+  };
+
+  // 動かしたコマが実際にマスへ到着した瞬間に移動音を鳴らす(動き始めではなく止まった時)
+  const handlePieceArrived = (pieceId: string) => {
+    if (pieceId !== pendingMovePieceId) return;
+    playSfx('move');
+    setPendingMovePieceId(null);
+  };
+
+  const isHumanTurn = game != null && currentColor(game) === humanColor;
+
+  const rollWithAnimation = () => {
+    if (rollingRef.current) return;
+    rollingRef.current = true;
+    setTimeout(() => playSfx('roll'), 400); // 投げ始めの動きと音のタイミングを合わせるための遅延
+    setDiceRolling(true);
+    setTimeout(() => {
+      roll();
+      rollingRef.current = false;
+      setDiceRolling(false);
+    }, 700); // Dice3Dの投げ上げ→バウンド演出が収まるまでの時間に合わせる
+  };
+
+  const handleMove = (pieceId: string) => {
+    // オンライン対戦では到着検知による移動音を使わず、ログ監視の効果音に一本化しているため
+    // (下のuseEffect参照)、pendingMovePieceIdは設定しない
+    if (mode !== 'online') setPendingMovePieceId(pieceId);
+    move(pieceId);
+  };
+
+  // CPUの手番を自動進行する(オンライン対戦では空席のCPU進行もサーバー側が担うため対象外)
+  useEffect(() => {
+    if (mode === 'online') return;
+    if (!game || game.phase === 'finished') return;
+    if (isHumanTurn) return;
+
+    cpuTimer.current = setTimeout(() => {
+      if (game.phase === 'awaiting_roll') {
+        rollWithAnimation();
+      } else if (game.phase === 'awaiting_move') {
+        const pieceId = pickCpuPieceId(game);
+        if (pieceId) handleMove(pieceId);
+      }
+    }, 700);
+
+    return () => {
+      if (cpuTimer.current) clearTimeout(cpuTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game, isHumanTurn, mode]);
+
+  // 自分の手番でも、動かせるコマが1つしかない場合はコマ選択を待たず自動的に進める
+  useEffect(() => {
+    if (!game || !isHumanTurn || game.phase !== 'awaiting_move') return;
+    const moves = getCurrentLegalMoves(game);
+    if (moves.length !== 1) return;
+
+    const onlyPieceId = moves[0].pieceId;
+    autoMoveTimer.current = setTimeout(() => {
+      handleMove(onlyPieceId);
+    }, 400);
+
+    return () => {
+      if (autoMoveTimer.current) clearTimeout(autoMoveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game, isHumanTurn]);
+
+  const legalMoves = useMemo(() => (game ? getCurrentLegalMoves(game) : []), [game]);
+  const selectablePieceIds = useMemo(
+    () => new Set(isHumanTurn && game?.phase === 'awaiting_move' ? legalMoves.map((m) => m.pieceId) : []),
+    [isHumanTurn, game?.phase, legalMoves],
+  );
+
+  if (!game) return null;
+
+  const color = currentColor(game);
+  const turnLabel = (() => {
+    if (mode !== 'online') return color === humanColor ? '(あなた)' : '(CPU)';
+    const owner = onlineRoom?.players.find((p) => p.color === color);
+    if (!owner) return '(CPU)';
+    return owner.id === onlinePlayerId ? '(あなた)' : `(${owner.name})`;
+  })();
+
+  return (
+    <div className="game-screen">
+      <div className="scene-wrap">
+        <Scene
+          game={game}
+          diceRolling={diceRolling}
+          selectablePieceIds={selectablePieceIds}
+          legalMoves={legalMoves}
+          captureOverride={captureOverride}
+          moverPieceId={captureOverride?.moverId}
+          onMoverArrived={captureOverride ? handleMoverArrived : undefined}
+          pendingMovePieceId={pendingMovePieceId}
+          onPieceArrived={handlePieceArrived}
+          onSelectPiece={(pieceId) => handleMove(pieceId)}
+          onDiceClick={isHumanTurn && game.phase === 'awaiting_roll' && !diceRolling ? rollWithAnimation : undefined}
+        />
+      </div>
+
+      <div className="overlay-top">
+        <div className="turn-indicator" style={{ borderColor: COLOR_HEX[color] }}>
+          <span className="turn-color" style={{ backgroundColor: COLOR_HEX[color] }} />
+          {COLOR_LABEL[color]}の番{turnLabel}
+          {game.startPhase ? ` / スタートダイス残り${game.startPhase.attemptsLeft}回` : ''}
+        </div>
+        <div className="overlay-top-actions">
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => {
+              const next = !muted;
+              setMuted(next);
+              setMutedState(next);
+            }}
+          >
+            {muted ? '🔇 サウンドOFF' : '🔊 サウンドON'}
+          </button>
+          <RulesInfoButton rules={rules} />
+          <button type="button" className="link-button" onClick={mode === 'online' ? leaveOnline : backToTitle}>
+            {mode === 'online' ? '退室する' : 'タイトルへ'}
+          </button>
+        </div>
+      </div>
+
+      <div className="overlay-bottom">
+        <div className="controls">
+          <button
+            type="button"
+            className="primary-button"
+            disabled={!isHumanTurn || game.phase !== 'awaiting_roll' || diceRolling}
+            onClick={rollWithAnimation}
+          >
+            サイコロを振る
+          </button>
+          {isHumanTurn && game.phase === 'awaiting_move' && legalMoves.length > 0 && (
+            <div className="move-hint">盤面のコマをクリックして選んでください</div>
+          )}
+        </div>
+
+        <div className="log-panel" ref={logRef}>
+          {game.log.slice(-LOG_HISTORY_LIMIT).map((line, i) => {
+            const lineColor = detectLogColor(line);
+            return (
+              // eslint-disable-next-line react/no-array-index-key
+              <div key={i} className="log-line">
+                {lineColor && <span className="log-dot" style={{ backgroundColor: COLOR_HEX[lineColor] }} />}
+                <span>{line}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
