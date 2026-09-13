@@ -26,6 +26,15 @@ function getSfxElement(name: SfxName): HTMLAudioElement {
   return el;
 }
 
+function getBgmElement(): HTMLAudioElement {
+  if (!bgmEl) {
+    bgmEl = new Audio('/sounds/bgm.wav');
+    bgmEl.loop = true;
+    bgmEl.volume = 0.25;
+  }
+  return bgmEl;
+}
+
 export interface PlaySfxOptions {
   /** 再生開始から何ミリ秒後にフェードアウトを始めるか */
   fadeOutAfterMs?: number;
@@ -40,8 +49,10 @@ export function playSfx(name: SfxName, options?: PlaySfxOptions) {
   const el = base.cloneNode(true) as HTMLAudioElement;
   const startVolume = 0.6;
   el.volume = startVolume;
-  el.play().catch(() => {
-    // ユーザー操作前の自動再生ブロックなどは無視する
+  el.play().catch((err) => {
+    // スマホでの自動再生制限などで失敗することがある。無視して構わないが、
+    // 診断しやすいようコンソールには残しておく
+    console.warn(`[audio] playSfx(${name}) failed`, err);
   });
 
   if (options?.fadeOutAfterMs != null) {
@@ -63,13 +74,9 @@ export function playSfx(name: SfxName, options?: PlaySfxOptions) {
 }
 
 export function startBgm() {
-  if (!bgmEl) {
-    bgmEl = new Audio('/sounds/bgm.wav');
-    bgmEl.loop = true;
-    bgmEl.volume = 0.25;
-  }
+  const el = getBgmElement();
   if (muted) return;
-  bgmEl.play().catch(() => {});
+  el.play().catch((err) => console.warn('[audio] startBgm failed', err));
 }
 
 export function stopBgm() {
@@ -85,6 +92,37 @@ export function setMuted(value: boolean) {
   if (muted) {
     bgmEl?.pause();
   } else {
-    bgmEl?.play().catch(() => {});
+    bgmEl?.play().catch((err) => console.warn('[audio] setMuted(false) resume failed', err));
   }
+}
+
+/**
+ * スマホ(特にiOS Safari)では、ページ内で一度もユーザー操作を経ていない状態で
+ * 音声を再生しようとすると自動再生制限で無音のまま失敗することがある。
+ * この制限の解除は要素ごとに個別に必要になる場合があるため、実際に鳴らす可能性のある
+ * 全てのAudio要素それぞれに対して、最初のユーザー操作のタイミングで一度再生→即座に
+ * 停止しておくことで、以降(setTimeoutなどで遅延させて呼ぶ場合も含め)の再生が
+ * 安定するようにする。
+ */
+function unlockAllAudioElements() {
+  const targets = [...(Object.keys(SFX_FILES) as SfxName[]).map(getSfxElement), getBgmElement()];
+  for (const el of targets) {
+    const wasPlaying = !el.paused;
+    el.play()
+      .then(() => {
+        if (!wasPlaying) {
+          el.pause();
+          el.currentTime = 0;
+        }
+      })
+      .catch(() => {
+        // ここで失敗しても、各playSfx呼び出し自体が(ユーザー操作を経た後の)
+        // 通常の再生試行を行うため、致命的ではない
+      });
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pointerdown', unlockAllAudioElements, { once: true });
+  window.addEventListener('touchstart', unlockAllAudioElements, { once: true });
 }
