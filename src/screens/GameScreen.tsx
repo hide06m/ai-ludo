@@ -204,23 +204,25 @@ export function GameScreen() {
           {game.startPhase ? ` / スタートダイス残り${game.startPhase.attemptsLeft}回` : ''}
         </div>
         <div className="overlay-top-actions">
-          <button
-            type="button"
-            className="link-button"
-            onClick={() => {
-              const next = !muted;
-              setMuted(next);
-              setMutedState(next);
-            }}
-          >
-            {muted ? '🔇 サウンドOFF' : '🔊 サウンドON'}
-          </button>
           <RulesInfoButton rules={rules} />
           <button type="button" className="link-button" onClick={mode === 'online' ? leaveOnline : backToTitle}>
             {mode === 'online' ? '退室する' : 'タイトルへ'}
           </button>
         </div>
       </div>
+
+      <button
+        type="button"
+        className="sound-toggle-button"
+        aria-label={muted ? 'サウンドOFF(タップでON)' : 'サウンドON(タップでOFF)'}
+        onClick={() => {
+          const next = !muted;
+          setMuted(next);
+          setMutedState(next);
+        }}
+      >
+        {muted ? '🔇' : '🔊'}
+      </button>
 
       <div className="overlay-bottom">
         <div className="controls">

@@ -320,6 +320,28 @@ button {
   gap: 8px;
   pointer-events: auto;
 }
+
+/* サイコロを振るボタンやログ欄など主要な操作の邪魔にならないよう、
+   画面右下の隅にアイコンだけの小さいボタンとして独立させて配置する */
+.sound-toggle-button {
+  position: absolute;
+  right: 14px;
+  bottom: 166px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  color: white;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  z-index: 1;
+}
 .move-choices {
   display: flex;
   gap: 6px;
@@ -498,5 +520,9 @@ button {
     width: 100%;
     max-height: 72px;
     text-align: left;
+  }
+
+  .sound-toggle-button {
+    bottom: 200px;
   }
 }
