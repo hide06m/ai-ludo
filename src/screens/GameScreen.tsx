@@ -27,6 +27,7 @@ export function GameScreen() {
   const onlineRoom = useAppStore((s) => s.online.room);
   const onlinePlayerId = useAppStore((s) => s.online.playerId);
   const lastCapture = useAppStore((s) => s.lastCapture);
+  const remoteMove = useAppStore((s) => s.remoteMove);
 
   const [diceRolling, setDiceRolling] = useState(false);
   const [muted, setMutedState] = useState(isMuted());
@@ -56,17 +57,15 @@ export function GameScreen() {
     if (newLines.some((line) => line.includes('あがりました'))) {
       playSfx('finish');
     }
-    // オンライン対戦では移動/弾き飛ばしがサーバー発の状態更新として届くだけで、
-    // ローカルでpieceIdを起点にした到着検知(下のcaptureOverride/pendingMovePieceId)が使えないため、
-    // ログの文言から効果音のタイミングを判定する簡易的な方式にする
-    if (mode === 'online') {
-      for (const line of newLines) {
-        if (line.includes('弾き飛ばされて')) playSfx('capture');
-        else if (line.includes('に移動')) playSfx('move');
-      }
-    }
     prevLogLength.current = log.length;
-  }, [game?.log.length, mode]);
+  }, [game?.log.length]);
+
+  // オンライン対戦: サーバーの状態更新から検出した「動いたコマ」を、CPU対戦と同じ
+  // 到着検知の仕組みに乗せる(下のpendingMovePieceId/onPieceArrived参照)
+  useEffect(() => {
+    if (mode !== 'online' || !remoteMove) return;
+    setPendingMovePieceId(remoteMove.pieceId);
+  }, [mode, remoteMove]);
 
   // 1〜3位が確定した瞬間に拍手を鳴らす(順位が下がるほど、鳴らす長さを1秒ずつ短くする)
   useEffect(() => {
@@ -135,8 +134,8 @@ export function GameScreen() {
   };
 
   const handleMove = (pieceId: string) => {
-    // オンライン対戦では到着検知による移動音を使わず、ログ監視の効果音に一本化しているため
-    // (下のuseEffect参照)、pendingMovePieceIdは設定しない
+    // オンライン対戦ではサーバーの応答(room_state)を起点にremoteMoveのuseEffectが
+    // pendingMovePieceIdを設定するため、クリック時点ではローカルで設定しない
     if (mode !== 'online') setPendingMovePieceId(pieceId);
     move(pieceId);
   };

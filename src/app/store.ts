@@ -42,6 +42,12 @@ const INITIAL_ONLINE_STATE: OnlineState = {
   error: null,
 };
 
+/** オンライン対戦で、サーバーの状態更新から検出した「直近に動いたコマ」。到着検知で移動音を鳴らすのに使う */
+export interface RemoteMove {
+  pieceId: string;
+  atMs: number;
+}
+
 interface AppStore {
   screen: Screen;
   mode: Mode;
@@ -49,6 +55,7 @@ interface AppStore {
   humanColor: Color;
   game: GameState | null;
   lastCapture: LastCapture | null;
+  remoteMove: RemoteMove | null;
   online: OnlineState;
 
   goTo: (screen: Screen) => void;
@@ -75,6 +82,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   humanColor: 'red',
   game: null,
   lastCapture: null,
+  remoteMove: null,
   online: INITIAL_ONLINE_STATE,
 
   goTo: (screen) => set({ screen }),
@@ -222,6 +230,23 @@ function detectCapture(before: GameState, next: GameState, moverId: string): Las
   return { pieceId: capturedPiece.id, fromStep: capturedBefore.step, moverId, atMs: Date.now(), delayMs };
 }
 
+/**
+ * オンライン対戦でサーバーから届いたGameStateスナップショット同士を比較し、
+ * 「今回のサーバー側の更新でどのコマが動いたか」を推定する。
+ * (ローカルでrollDice/selectMoveを呼ばないため、pieceIdを直接知る手段がない)
+ * ホームから出て自陣マスに弾き飛ばされたコマ自体は「動かした側」ではないので除外する。
+ */
+function detectMoverId(before: GameState, next: GameState): string | undefined {
+  const beforeById = new Map(before.pieces.map((p) => [p.id, p] as const));
+  const moved = next.pieces.find((p) => {
+    const b = beforeById.get(p.id);
+    if (!b) return false;
+    if (b.status === 'active' && p.status === 'home') return false; // 弾き飛ばされた側
+    return b.step !== p.step || (b.status === 'home' && p.status === 'active');
+  });
+  return moved?.id;
+}
+
 function maybeFinish(set: (partial: Partial<AppStore>) => void, game: GameState) {
   if (game.phase === 'finished') {
     set({ screen: 'result' });
@@ -262,10 +287,25 @@ function handleServerMessage(set: (updater: (state: AppStore) => Partial<AppStor
         } else if (room.phase === 'lobby' && (s.screen === 'game' || s.screen === 'result')) {
           screen = 'onlineRoom';
         }
+
+        // サーバーから届いた新旧のGameStateを比較し、CPU対戦と同じ「到着タイミングで
+        // 効果音を鳴らす」仕組みに乗せられるよう、動いたコマ・弾き飛ばしを検出する
+        let lastCapture = s.lastCapture;
+        let remoteMove = s.remoteMove;
+        if (s.game && room.game && s.game !== room.game) {
+          const moverId = detectMoverId(s.game, room.game);
+          if (moverId) {
+            remoteMove = { pieceId: moverId, atMs: Date.now() };
+            lastCapture = detectCapture(s.game, room.game, moverId);
+          }
+        }
+
         return {
           online: { ...s.online, room, error: null },
           game: room.game ?? s.game,
           humanColor: myColor,
+          lastCapture,
+          remoteMove,
           screen,
         };
       });
