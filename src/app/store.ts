@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { playSfx } from '../audio/sounds';
 import { chooseCpuMove } from '../game/ai';
 import { createInitialState, getCurrentLegalMoves, rollDice, selectMove } from '../game/turn';
 import type { Color, GameState, Rules } from '../game/types';
@@ -148,6 +149,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
     const lastCapture = detectCapture(before, next, pieceId);
     set({ game: next, lastCapture });
+    playNewFinishChime(before, next);
+    playNewRankSounds(before, next);
     maybeFinish(set, next);
   },
 
@@ -247,6 +250,36 @@ function detectMoverId(before: GameState, next: GameState): string | undefined {
   return moved?.id;
 }
 
+/**
+ * 1〜3位が新たに確定した分だけ拍手を鳴らす(順位が下がるほど、鳴らす長さを1秒ずつ短くする)。
+ * 3位が確定した手番では、残り1人になった4位も同時にrankingsへ確定される仕様上、
+ * before→nextでrankingsが1手で2件以上一気に増える(2件→4件)ことがあるため、
+ * 新たに埋まった順位を1件ずつ辿って判定する(1件ずつの増分を前提にしない)。
+ * この判定はコンポーネントのuseEffectではなくストア側で行う。3位確定と同時に
+ * ゲーム終了・結果画面への遷移も起きるため、GameScreenがその場でアンマウントされ
+ * useEffectが実行されないまま消えてしまうケースがあったため。
+ */
+function playNewRankSounds(before: GameState, next: GameState) {
+  for (let rank = before.rankings.length + 1; rank <= next.rankings.length; rank++) {
+    if (rank <= 3) {
+      playSfx('victory', { fadeOutAfterMs: 3000 - (rank - 1) * 1000 });
+    }
+  }
+}
+
+/**
+ * 「あがりました」のチャイムを、新たに追加されたログ行から判定して鳴らす。
+ * 最後の1コマの「あがり」がそのままゲーム終了(結果画面への遷移)と同じ手で
+ * 起きる場合があり、rankと同じ理由でGameScreen側のuseEffectでは検知できないため
+ * ここで判定する。
+ */
+function playNewFinishChime(before: GameState, next: GameState) {
+  const newLines = next.log.slice(before.log.length);
+  if (newLines.some((line) => line.includes('あがりました'))) {
+    playSfx('finish');
+  }
+}
+
 function maybeFinish(set: (partial: Partial<AppStore>) => void, game: GameState) {
   if (game.phase === 'finished') {
     set({ screen: 'result' });
@@ -298,6 +331,11 @@ function handleServerMessage(set: (updater: (state: AppStore) => Partial<AppStor
             remoteMove = { pieceId: moverId, atMs: Date.now() };
             lastCapture = detectCapture(s.game, room.game, moverId);
           }
+        }
+
+        if (s.game && room.game) {
+          playNewFinishChime(s.game, room.game);
+          playNewRankSounds(s.game, room.game);
         }
 
         return {

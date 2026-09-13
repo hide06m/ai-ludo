@@ -40,8 +40,6 @@ export function GameScreen() {
   const rollingRef = useRef(false); // state更新の非同期性に関係なく多重ロールを防ぐ同期ガード
   const captureSoundPlayed = useRef(false); // 到着検知とフォールバックタイマーで弾き飛ばし音が二重に鳴らないようにする
   const logRef = useRef<HTMLDivElement>(null);
-  const prevLogLength = useRef(0);
-  const prevRankingsLength = useRef(0);
 
   // 対戦画面の間だけBGMを再生する
   useEffect(() => {
@@ -49,15 +47,12 @@ export function GameScreen() {
     return () => stopBgm();
   }, []);
 
-  // ログが増えるたびに末尾(最新行)へ自動スクロールし、「あがり」の行が増えたら効果音を鳴らす
+  // ログが増えるたびに末尾(最新行)へ自動スクロールする
+  // (「あがり」チャイム・1〜3位の拍手はstore.ts側で判定・再生している。
+  //  最後のコマの「あがり」やゲーム終了は結果画面への遷移と同じ手で起きるため、
+  //  このコンポーネントのuseEffectでは間に合わずアンマウントされてしまうことがあるため)
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-    const log = game?.log ?? [];
-    const newLines = log.slice(prevLogLength.current);
-    if (newLines.some((line) => line.includes('あがりました'))) {
-      playSfx('finish');
-    }
-    prevLogLength.current = log.length;
   }, [game?.log.length]);
 
   // オンライン対戦: サーバーの状態更新から検出した「動いたコマ」を、CPU対戦と同じ
@@ -66,16 +61,6 @@ export function GameScreen() {
     if (mode !== 'online' || !remoteMove) return;
     setPendingMovePieceId(remoteMove.pieceId);
   }, [mode, remoteMove]);
-
-  // 1〜3位が確定した瞬間に拍手を鳴らす(順位が下がるほど、鳴らす長さを1秒ずつ短くする)
-  useEffect(() => {
-    const rankingsLength = game?.rankings.length ?? 0;
-    const newRank = rankingsLength; // 新たに順位が確定した人の順位(1位, 2位, 3位…)
-    if (rankingsLength > prevRankingsLength.current && newRank <= 3) {
-      playSfx('victory', { fadeOutAfterMs: 3000 - (newRank - 1) * 1000 });
-    }
-    prevRankingsLength.current = rankingsLength;
-  }, [game?.rankings.length]);
 
   // 弾き飛ばし発生時、動かしたコマが実際にそのマスへ到着するまでは
   // 弾かれたコマを元の位置に留めて見せ、到着と同時に自陣へ戻す。
