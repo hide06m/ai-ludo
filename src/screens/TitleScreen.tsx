@@ -8,10 +8,10 @@ export function TitleScreen() {
     <div className="screen screen-center">
       <h1>ルドー</h1>
       <p className="subtitle">インド生まれでイギリス育ちのすごろく、ルドーです</p>
-      <button type="button" className="primary-button" onClick={() => goTo('rules')}>
+      <button type="button" className="primary-button title-action-button" onClick={() => goTo('rules')}>
         CPU対戦を始める
       </button>
-      <button type="button" className="secondary-button" onClick={() => goTo('onlineLobby')}>
+      <button type="button" className="secondary-button title-action-button" onClick={() => goTo('onlineLobby')}>
         友達とオンライン対戦
       </button>
       <RulesInfoButton rules={rules} />

@@ -62,6 +62,12 @@ body {
   margin-top: 12px;
 }
 
+/* トップ画面の主要ボタン(CPU対戦を始める/友達とオンライン対戦)の幅を
+   文言の長さに関わらず揃える */
+.title-action-button {
+  width: 280px;
+}
+
 button {
   font-family: inherit;
 }
