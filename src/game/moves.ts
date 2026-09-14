@@ -42,16 +42,20 @@ function getHomeExitMove(allPieces: Piece[], piece: Piece, dice: number): LegalM
 function getActivePieceMove(state: GameState, piece: Piece, dice: number): LegalMove | undefined {
   const rawStep = piece.step + dice;
   let toStep: number;
-  if (rawStep > FINISH_STEP) {
-    if (state.rules.goalRule === 'exact') return undefined; // ピッタリでないと動けない
-    // 大きい目でもOK: 最奥から順に、自分の別コマ(あがり済み含む)に塞がれていない
-    // 一番奥のマスを探して進む(ゴールマスに複数コマが詰まっている場合を考慮)
+  if (rawStep >= FINISH_STEP && state.rules.goalRule === 'overOk') {
+    // 大きい目でもOK: 残り数以上の目が出た場合(ちょうど最奥に届く場合も含む)、
+    // 最奥から順に、自分の別コマ(あがり済み含む)に塞がれていない一番奥のマスを探して進む
+    // (ちょうど最奥に届く出目でも、そこが自分の別コマで塞がっていれば手前の空きマスまで進める。
+    //  ここをrawStep > FINISH_STEPだけに限定していたため、ぴったり最奥に届く出目のときだけ
+    //  この救済が働かず、塞がっていると本来動けるはずなのにパス扱いになるバグがあった)
     let candidate = FINISH_STEP;
     while (candidate > piece.step && findPieceInGoal(state.pieces, piece.color, candidate)) {
       candidate--;
     }
     if (candidate <= piece.step) return undefined; // 空いているマスがない
     toStep = candidate;
+  } else if (rawStep > FINISH_STEP) {
+    return undefined; // ピッタリでないと動けない(goalRule=exact)
   } else {
     toStep = rawStep;
   }

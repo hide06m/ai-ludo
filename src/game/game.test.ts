@@ -169,6 +169,32 @@ describe('ゴールマス内の複数コマ', () => {
     expect(move?.toStep).toBe(FINISH_STEP - 1);
   });
 
+  it('overOkでは、出目がちょうど最奥に届く場合でも最奥が塞がっていれば手前の空きマスまで進める', () => {
+    // 実際に報告された不具合の再現: オーバーシュートではなく、出目がちょうどFINISH_STEPに
+    // 一致する場合、これまでは「大きい目でもOK」の救済ロジックが働かず、最奥マスが自分の
+    // 別コマで塞がっていると(本来は手前の空きマスに進めるはずなのに)パスになっていた
+    let state = createInitialState({ ...baseRules, goalRule: 'overOk' });
+    state = withPieces(state, [
+      { id: 'red-0', status: 'finished', step: FINISH_STEP } as never,
+      { id: 'red-1', status: 'active', step: FINISH_STEP - 4 } as never,
+    ]);
+    // dice=4: (FINISH_STEP-4)+4 = FINISH_STEP ちょうど。最奥はred-0が占有しているため、
+    // その手前(FINISH_STEP-1)まで進めるはず
+    const moves = getLegalMoves({ ...state, dice: 4 }, 'red', 4);
+    const move = moves.find((m) => m.pieceId === 'red-1');
+    expect(move?.toStep).toBe(FINISH_STEP - 1);
+  });
+
+  it('goalRule=exactでは、出目がちょうど最奥に届いても最奥が塞がっていれば動けない(救済ロジックは適用されない)', () => {
+    let state = createInitialState({ ...baseRules, goalRule: 'exact' });
+    state = withPieces(state, [
+      { id: 'red-0', status: 'finished', step: FINISH_STEP } as never,
+      { id: 'red-1', status: 'active', step: FINISH_STEP - 4 } as never,
+    ]);
+    const moves = getLegalMoves({ ...state, dice: 4 }, 'red', 4);
+    expect(moves.find((m) => m.pieceId === 'red-1')).toBeUndefined();
+  });
+
   it('自分の別コマに完全に塞がれて前進できなくなったコマがいると合法手がなくパスする', () => {
     let state = createInitialState(baseRules);
     state = withPieces(state, [
