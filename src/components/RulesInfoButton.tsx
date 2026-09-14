@@ -78,40 +78,43 @@ export function RulesInfoButton({ rules, className }: { rules: Rules; className?
         ルール確認
       </button>
       {open && (
-        <div className="rule-popover rule-popover-wide">
-          <div className="rule-popover-tabs">
-            {TABS.map((t) => (
-              <button
-                key={t}
-                type="button"
-                className={`rule-tab-button${t === tab ? ' active' : ''}`}
-                onClick={() => setTab(t)}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
+        <>
+          <div className="rule-popover-backdrop" onClick={() => setOpen(false)} />
+          <div className="rule-popover rule-popover-wide">
+            <div className="rule-popover-tabs">
+              {TABS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`rule-tab-button${t === tab ? ' active' : ''}`}
+                  onClick={() => setTab(t)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
 
-          {tab === '遊び方' && <StepList items={HOW_TO_PLAY_STEPS} />}
-          {tab === 'ヒント' && <StepList items={HINTS} />}
-          {tab === 'ルール' &&
-            describeRules(rules).map(({ label, value }) => {
-              const Illustration = CURRENT_RULE_ILLUSTRATIONS[label];
-              return (
-                <div key={label} className="rule-popover-item">
-                  <div className="rule-popover-row">
-                    <span>{label}</span>
-                    <span>{value}</span>
-                  </div>
-                  {Illustration && (
-                    <div className="rule-popover-illustration">
-                      <Illustration />
+            {tab === '遊び方' && <StepList items={HOW_TO_PLAY_STEPS} />}
+            {tab === 'ヒント' && <StepList items={HINTS} />}
+            {tab === 'ルール' &&
+              describeRules(rules).map(({ label, value }) => {
+                const Illustration = CURRENT_RULE_ILLUSTRATIONS[label];
+                return (
+                  <div key={label} className="rule-popover-item">
+                    <div className="rule-popover-row">
+                      <span>{label}</span>
+                      <span>{value}</span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-        </div>
+                    {Illustration && (
+                      <div className="rule-popover-illustration">
+                        <Illustration />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </>
       )}
     </div>
   );

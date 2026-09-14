@@ -7,16 +7,18 @@ export function TitleScreen() {
   const rules = useAppStore((s) => s.rules);
   return (
     <div className="screen screen-center">
-      <h1>ルドー</h1>
+      <h1 className="title-logo-heading">
+        <img src="/logo.png" alt="ルドー" className="title-logo" />
+      </h1>
       <div className="title-spinner">
         <TitlePieceSpinner />
       </div>
-      <p className="subtitle">インド生まれでイギリス育ちのすごろく、ルドーです</p>
-      <button type="button" className="primary-button title-action-button" onClick={() => goTo('rules')}>
-        CPU対戦を始める
+      <p className="subtitle">インド生まれでイギリス育ちのすごろく</p>
+      <button type="button" className="image-button title-action-button" onClick={() => goTo('rules')}>
+        <img src="/button-cpu.png" alt="CPU対戦を始める" />
       </button>
-      <button type="button" className="secondary-button title-action-button" onClick={() => goTo('onlineLobby')}>
-        友達とオンライン対戦
+      <button type="button" className="image-button title-action-button" onClick={() => goTo('onlineLobby')}>
+        <img src="/button-friend.png" alt="友達とオンライン対戦" />
       </button>
       <RulesInfoButton rules={rules} />
     </div>
