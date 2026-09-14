@@ -319,7 +319,8 @@ button {
   margin-bottom: 8px;
   position: sticky;
   top: 0;
-  background: inherit;
+  z-index: 1;
+  background: rgb(20, 20, 20);
   padding-bottom: 4px;
 }
 .rule-tab-button {
