@@ -43,6 +43,15 @@ interface Client {
 }
 
 const clients = new Map<WebSocket, Client>();
+/**
+ * playerIdごとに「現在有効な」接続を1つだけ覚えておく。
+ * 不意の切断からの再接続では、古い(実は死んでいる)接続のcloseイベントが
+ * 新しい接続の確立より後に届くことがある。その場合に備えず古い接続のcloseを
+ * そのまま処理してしまうと、せっかく再接続した直後にconnected=falseへ
+ * 巻き戻されてしまい、CPU代行が復活して「勝手に操作が続く」ように見えるバグになる。
+ * このマップと照合し、既に新しい接続に取って代わられたcloseイベントは無視する。
+ */
+const activeConnectionByPlayerId = new Map<string, WebSocket>();
 
 function send(ws: WebSocket, message: ServerMessage) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message));
@@ -86,6 +95,26 @@ function scheduleRoomCleanup(room: Room) {
   }, ROOM_EMPTY_GRACE_MS);
 }
 
+/**
+ * この接続を、client.idの「現在有効な接続」として登録する。
+ * 同じplayerIdの古い接続が残っていれば、それを強制的に閉じる
+ * (そのcloseイベントは下のガードによりdisconnectPlayerを呼ばなくなる)。
+ */
+function claimConnection(client: Client) {
+  if (!client.id) return;
+  const previous = activeConnectionByPlayerId.get(client.id);
+  if (previous && previous !== client.ws) {
+    previous.terminate();
+  }
+  activeConnectionByPlayerId.set(client.id, client.ws);
+}
+
+function releaseConnection(client: Client) {
+  if (client.id && activeConnectionByPlayerId.get(client.id) === client.ws) {
+    activeConnectionByPlayerId.delete(client.id);
+  }
+}
+
 function handleResult(client: Client, result: ActionResult) {
   if (!result.ok) {
     send(client.ws, { type: 'error', message: result.error });
@@ -110,6 +139,7 @@ function handleMessage(client: Client, raw: string) {
       return;
     case 'create_room': {
       client.id = msg.playerId;
+      claimConnection(client);
       const room = createRoom(client.id, msg.name.slice(0, 20), msg.rules);
       client.roomCode = room.code;
       send(client.ws, { type: 'joined', playerId: client.id, room: toDTO(room) });
@@ -118,6 +148,7 @@ function handleMessage(client: Client, raw: string) {
     }
     case 'join_room': {
       client.id = msg.playerId;
+      claimConnection(client); // 同じplayerIdの古い接続があれば切り、この接続を正としてマークする
       const result = joinRoom(msg.roomCode, client.id, msg.name.slice(0, 20));
       if (!result.ok) {
         send(client.ws, { type: 'error', message: result.error });
@@ -178,6 +209,7 @@ function applyRoomAction(
     case 'leave_room':
       disconnectPlayer(room, playerId);
       client.roomCode = null;
+      releaseConnection(client);
       if (isRoomEmpty(room)) {
         deleteRoom(room.code);
       } else {
@@ -201,6 +233,10 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     clients.delete(ws);
+    // 既に同じplayerIdの新しい接続に取って代わられている場合、このcloseイベントは
+    // 古い(実質死んでいた)接続のものなので、新しい接続の状態を壊さないよう無視する
+    if (client.id && activeConnectionByPlayerId.get(client.id) !== ws) return;
+    releaseConnection(client);
     if (client.roomCode && client.id) {
       const room = findRoom(client.roomCode);
       if (room) {
