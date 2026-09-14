@@ -195,6 +195,24 @@ describe('ゴールマス内の複数コマ', () => {
     expect(moves.find((m) => m.pieceId === 'red-1')).toBeUndefined();
   });
 
+  it('overOkでは、最奥3マスが自コマで埋まっていて空きが一番外側の1マスだけの場合、矢印マスのコマは1〜6のどの出目でもその空きマスまで進んであがれる', () => {
+    // 出目がぴったりでも、オーバーしても、あるいは(途中の塞がったマスにぴったり止まろうとする形で)
+    // 出目が足りなそうに見えても、動ける範囲(出目以内)に空いているマスがあればそこまで進める
+    for (let dice = 1; dice <= 6; dice++) {
+      let state = createInitialState({ ...baseRules, goalRule: 'overOk' });
+      state = withPieces(state, [
+        { id: 'red-0', status: 'finished', step: FINISH_STEP } as never,
+        { id: 'red-1', status: 'finished', step: FINISH_STEP - 1 } as never,
+        { id: 'red-2', status: 'finished', step: FINISH_STEP - 2 } as never,
+        { id: 'red-3', status: 'active', step: FINISH_STEP - 4 } as never, // 矢印マス相当(唯一の空きマスの1手前)
+      ]);
+      const moves = getLegalMoves({ ...state, dice }, 'red', dice);
+      const move = moves.find((m) => m.pieceId === 'red-3');
+      expect(move, `dice=${dice}`).toBeDefined();
+      expect(move?.toStep, `dice=${dice}`).toBe(FINISH_STEP - 3);
+    }
+  });
+
   it('自分の別コマに完全に塞がれて前進できなくなったコマがいると合法手がなくパスする', () => {
     let state = createInitialState(baseRules);
     state = withPieces(state, [

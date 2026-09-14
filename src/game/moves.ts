@@ -42,22 +42,25 @@ function getHomeExitMove(allPieces: Piece[], piece: Piece, dice: number): LegalM
 function getActivePieceMove(state: GameState, piece: Piece, dice: number): LegalMove | undefined {
   const rawStep = piece.step + dice;
   let toStep: number;
-  if (rawStep >= FINISH_STEP && state.rules.goalRule === 'overOk') {
-    // 大きい目でもOK: 残り数以上の目が出た場合(ちょうど最奥に届く場合も含む)、
-    // 最奥から順に、自分の別コマ(あがり済み含む)に塞がれていない一番奥のマスを探して進む
-    // (ちょうど最奥に届く出目でも、そこが自分の別コマで塞がっていれば手前の空きマスまで進める。
-    //  ここをrawStep > FINISH_STEPだけに限定していたため、ぴったり最奥に届く出目のときだけ
-    //  この救済が働かず、塞がっていると本来動けるはずなのにパス扱いになるバグがあった)
-    let candidate = FINISH_STEP;
-    while (candidate > piece.step && findPieceInGoal(state.pieces, piece.color, candidate)) {
-      candidate--;
-    }
-    if (candidate <= piece.step) return undefined; // 空いているマスがない
-    toStep = candidate;
-  } else if (rawStep > FINISH_STEP) {
-    return undefined; // ピッタリでないと動けない(goalRule=exact)
+  if (rawStep > FINISH_STEP) {
+    if (state.rules.goalRule === 'exact') return undefined; // ピッタリでないと動けない
+    toStep = FINISH_STEP; // 大きい目でもOK: 出目で届く上限(=最奥)を仮の着地点にし、下で空きマスを探す
   } else {
     toStep = rawStep;
+  }
+
+  if (!isOnTrack(toStep)) {
+    // ゴールマス内: 自分の別コマ(あがり済み含む)が既に止まっているマスには止まれない。
+    // goalRule=overOkの場合は、そこより手前(出目で届く範囲内=toStep以下)に空いているマスが
+    // あれば、そこまで進んであがれる。残りマス数にぴったり一致する出目でなくても、
+    // またオーバーする出目でなくても、動ける分だけ進められるようにする
+    // (例: 最奥3マスが自コマで埋まっていて、矢印マスの手前のコマが2〜6のどれを出しても、
+    //  唯一空いている一番外側のゴールマスまで進んであがれる)
+    while (toStep > piece.step && findPieceInGoal(state.pieces, piece.color, toStep)) {
+      if (state.rules.goalRule !== 'overOk') return undefined;
+      toStep--;
+    }
+    if (toStep <= piece.step) return undefined; // 空いているマスがない、または進めない
   }
 
   if (state.rules.blockRule === 'on' && isOnTrack(piece.step)) {
@@ -82,11 +85,9 @@ function getActivePieceMove(state: GameState, piece: Piece, dice: number): Legal
       if (occupant.color === piece.color) return undefined; // 自分のコマには止まれない
       capturesPieceId = occupant.id;
     }
-  } else {
-    // ゴールマス内: 自分の別コマが既に止まっているマスには止まれない(相手は存在しえない)
-    const occupant = findPieceInGoal(state.pieces, piece.color, toStep);
-    if (occupant && occupant.id !== piece.id) return undefined;
   }
+  // ゴールマス内の着地先が自分の別コマで塞がれていないことは、上の空きマス探索で
+  // 既に保証されている(相手コマがゴールマスに存在することはない)
 
   return { pieceId: piece.id, fromStep: piece.step, toStep, capturesPieceId };
 }
