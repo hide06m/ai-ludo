@@ -11,7 +11,7 @@ export function TitleScreen() {
       <button type="button" className="primary-button" onClick={() => goTo('rules')}>
         CPU対戦を始める
       </button>
-      <button type="button" className="link-button" onClick={() => goTo('onlineLobby')}>
+      <button type="button" className="secondary-button" onClick={() => goTo('onlineLobby')}>
         友達とオンライン対戦
       </button>
       <RulesInfoButton rules={rules} />
