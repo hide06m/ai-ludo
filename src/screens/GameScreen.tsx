@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { pickCpuPieceId, useAppStore } from '../app/store';
-import { isMuted, playSfx, setMuted, startBgm, stopBgm } from '../audio/sounds';
+import { playSfx, startBgm, stopBgm } from '../audio/sounds';
 import { RulesInfoButton } from '../components/RulesInfoButton';
+import { SoundToggleButton } from '../components/SoundToggleButton';
 import { currentColor, getCurrentLegalMoves } from '../game/turn';
 import { COLORS, type Color } from '../game/types';
 import { COLOR_HEX } from '../render/colors';
@@ -31,7 +32,6 @@ export function GameScreen() {
   const onlineStatus = useAppStore((s) => s.online.status);
 
   const [diceRolling, setDiceRolling] = useState(false);
-  const [muted, setMutedState] = useState(isMuted());
   const [captureOverride, setCaptureOverride] = useState<{ pieceId: string; fromStep: number; moverId: string } | null>(
     null,
   );
@@ -218,18 +218,7 @@ export function GameScreen() {
         </div>
       </div>
 
-      <button
-        type="button"
-        className="sound-toggle-button"
-        aria-label={muted ? 'サウンドOFF(タップでON)' : 'サウンドON(タップでOFF)'}
-        onClick={() => {
-          const next = !muted;
-          setMuted(next);
-          setMutedState(next);
-        }}
-      >
-        {muted ? '🔇' : '🔊'}
-      </button>
+      <SoundToggleButton className="sound-toggle-button-game" />
 
       <div className="overlay-bottom">
         <div className="controls">

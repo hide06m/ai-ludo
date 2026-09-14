@@ -1,5 +1,6 @@
 import { useAppStore } from '../app/store';
 import { RulesInfoButton } from '../components/RulesInfoButton';
+import { SoundToggleButton } from '../components/SoundToggleButton';
 import type { BlockRule, EndRule, GoalRule, Rules, StartRule } from '../game/types';
 
 export function RadioGroup<T extends string>({
@@ -38,6 +39,7 @@ export function RuleSelectScreen() {
 
   return (
     <div className="screen">
+      <SoundToggleButton />
       <div className="screen-header">
         <h2>ルール設定</h2>
         <RulesInfoButton rules={rules} />

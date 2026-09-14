@@ -1,5 +1,6 @@
 import { useAppStore } from '../app/store';
 import { RulesInfoButton } from '../components/RulesInfoButton';
+import { SoundToggleButton } from '../components/SoundToggleButton';
 import { TitlePieceSpinner } from '../render/TitlePieceSpinner';
 
 export function TitleScreen() {
@@ -7,6 +8,7 @@ export function TitleScreen() {
   const rules = useAppStore((s) => s.rules);
   return (
     <div className="screen screen-center">
+      <SoundToggleButton />
       <h1 className="title-logo-heading">
         <img src="/logo.png" alt="ルドー" className="title-logo" />
       </h1>

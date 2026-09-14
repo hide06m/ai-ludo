@@ -424,12 +424,12 @@ button {
   pointer-events: auto;
 }
 
-/* サイコロを振るボタンやログ欄など主要な操作の邪魔にならないよう、
-   画面右下の隅にアイコンだけの小さいボタンとして独立させて配置する */
+/* どの画面でも同じ見た目で置けるよう、既定では画面右上の隅に固定表示する
+   アイコンだけの小さいボタンにする(スクロールしても位置が変わらないようfixed) */
 .sound-toggle-button {
-  position: absolute;
+  position: fixed;
+  top: 14px;
   right: 14px;
-  bottom: 166px;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -443,7 +443,13 @@ button {
   align-items: center;
   justify-content: center;
   pointer-events: auto;
-  z-index: 1;
+  z-index: 10;
+}
+/* ゲーム画面では上部にサイコロ目・ルール確認・退室リンクが並ぶため、
+   それらと重ならないよう右下の隅(操作ボタン群の上)に配置する */
+.sound-toggle-button-game {
+  top: auto;
+  bottom: 166px;
 }
 .move-choices {
   display: flex;
