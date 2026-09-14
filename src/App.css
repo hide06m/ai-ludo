@@ -312,6 +312,10 @@ button {
   max-height: min(420px, calc(100vh - 64px));
   max-height: min(420px, calc(100dvh - 64px));
   overflow-y: auto;
+  /* 上パディングはスクロール時もposition: stickyの計算に含まれず隙間として
+     残ってしまう(スクロール中の内容が覗いて見える)ため、コンテナ自体には
+     持たせず、下のrule-popover-tabs側に持たせて隙間ごと不透明にする */
+  padding-top: 0;
 }
 .rule-popover-tabs {
   display: flex;
@@ -321,6 +325,7 @@ button {
   top: 0;
   z-index: 1;
   background: rgb(20, 20, 20);
+  padding-top: 14px;
   padding-bottom: 4px;
 }
 .rule-tab-button {
