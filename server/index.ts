@@ -21,7 +21,7 @@ import {
 
 const PORT = Number(process.env.PORT ?? 8787);
 /** 通信切断(リロード・回線切れ等)から再接続するための猶予時間 */
-const ROOM_EMPTY_GRACE_MS = 2 * 60 * 1000;
+const ROOM_EMPTY_GRACE_MS = 10 * 60 * 1000;
 /**
  * pingを送る間隔。TCP接続が(モバイル回線の切り替えやプロキシのタイムアウトなどで)
  * 見た目上は繋がったまま中身だけ死んでいる状態を検出するためのハートビート。
@@ -151,7 +151,7 @@ function handleMessage(client: Client, raw: string) {
       claimConnection(client); // 同じplayerIdの古い接続があれば切り、この接続を正としてマークする
       const result = joinRoom(msg.roomCode, client.id, msg.name.slice(0, 20));
       if (!result.ok) {
-        send(client.ws, { type: 'error', message: result.error });
+        send(client.ws, { type: 'error', message: result.error, code: result.code });
         return;
       }
       client.roomCode = result.room.code;
@@ -173,7 +173,7 @@ function handleMessage(client: Client, raw: string) {
       }
       const room = findRoom(client.roomCode);
       if (!room) {
-        send(client.ws, { type: 'error', message: '部屋が見つかりません' });
+        send(client.ws, { type: 'error', message: '部屋が見つかりません', code: 'room_not_found' });
         return;
       }
       applyRoomAction(client, room, msg);

@@ -25,7 +25,7 @@ export interface Room {
 
 export type ActionResult =
   | { ok: true; room: Room }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code?: 'room_not_found' };
 
 const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 紛らわしい0/O/1/Iを除外
 const rooms = new Map<string, Room>();
@@ -62,7 +62,7 @@ export function findRoom(code: string): Room | undefined {
 
 export function joinRoom(code: string, playerId: string, name: string): ActionResult {
   const room = findRoom(code);
-  if (!room) return { ok: false, error: '部屋が見つかりません' };
+  if (!room) return { ok: false, error: '部屋が見つかりません', code: 'room_not_found' };
 
   // 既に同じplayerIdで参加済み(再接続)の場合は、進行中のゲームでも座席・色を保ったまま
   // 復帰させる(切断時にdisconnectPlayerがconnectedをfalseにするだけで座席を消さないため)

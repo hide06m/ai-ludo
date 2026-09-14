@@ -34,5 +34,10 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: 'joined'; playerId: string; room: RoomStateDTO }
   | { type: 'room_state'; room: RoomStateDTO }
-  | { type: 'error'; message: string }
+  /**
+   * codeが'room_not_found'の場合、部屋自体がサーバー上に存在しない(破棄済み)ことを表す。
+   * この場合はリトライしても無駄なので、クライアント側は自動再接続を諦めて
+   * タイトルに戻すなど、明確にユーザーへ伝える対応をとる
+   */
+  | { type: 'error'; message: string; code?: 'room_not_found' }
   | { type: 'pong' };

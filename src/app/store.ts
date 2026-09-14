@@ -163,7 +163,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     get().online.client?.disconnect();
     const playerId = getClientId();
     const client: OnlineClient = new OnlineClient(
-      (message) => handleServerMessage(set, message),
+      (message) => handleServerMessage(set, get, message),
       (status) => {
         set((s) => ({ online: { ...s.online, status } }));
         if (status === 'open') client.send({ type: 'create_room', playerId, name, rules });
@@ -178,7 +178,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     get().online.client?.disconnect();
     const playerId = getClientId();
     const client: OnlineClient = new OnlineClient(
-      (message) => handleServerMessage(set, message),
+      (message) => handleServerMessage(set, get, message),
       (status) => {
         set((s) => ({ online: { ...s.online, status } }));
         if (status === 'open') client.send({ type: 'join_room', playerId, roomCode, name });
@@ -317,7 +317,11 @@ function maybeFinish(set: (partial: Partial<AppStore>) => void, game: GameState)
  * オンライン対戦では盤面の状態は常にサーバーが正であり、クライアントは受け取った
  * GameStateをそのまま表示するだけ(ローカルでrollDice/selectMoveを呼ばない)。
  */
-function handleServerMessage(set: (updater: (state: AppStore) => Partial<AppStore>) => void, message: ServerMessage) {
+function handleServerMessage(
+  set: (updater: (state: AppStore) => Partial<AppStore>) => void,
+  get: () => AppStore,
+  message: ServerMessage,
+) {
   switch (message.type) {
     case 'joined': {
       const me = message.room.players.find((p) => p.id === message.playerId);
@@ -375,6 +379,19 @@ function handleServerMessage(set: (updater: (state: AppStore) => Partial<AppStor
       });
       return;
     case 'error':
+      if (message.code === 'room_not_found') {
+        // 部屋自体がサーバー上から破棄されている(長時間の通信断などで)。
+        // これ以上リトライしても無駄なので、自動再接続ループに入らないよう
+        // タイトルへ戻し、セッション情報も消す。何も言わずに画面が切り替わるだけだと
+        // ユーザーが混乱するため、理由をはっきり伝える
+        get().online.client?.disconnect();
+        clearLastSession();
+        set(() => ({ mode: 'cpu', screen: 'title', game: null, lastCapture: null, online: INITIAL_ONLINE_STATE }));
+        if (typeof window !== 'undefined') {
+          window.alert('この部屋は既に終了しているため、タイトルへ戻りました。もう一度部屋を作り直してください。');
+        }
+        return;
+      }
       set((s) => {
         // まだ一度も部屋に入れていない状態でのエラーは、再接続情報が古くなっている
         // (部屋が既に無い等)可能性が高いため、次回の再接続候補として案内しないよう消しておく
