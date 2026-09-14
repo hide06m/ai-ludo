@@ -113,16 +113,22 @@ function unlockAllAudioElements() {
   const targets = [...(Object.keys(SFX_FILES) as SfxName[]).map(getSfxElement), getBgmElement()];
   for (const el of targets) {
     const wasPlaying = !el.paused;
+    // play()の解決からpause()が効くまでの間、実際に音が鳴ってしまうのを防ぐため
+    // 解錠のための再生自体をミュートした状態で行う
+    const wasMuted = el.muted;
+    el.muted = true;
     el.play()
       .then(() => {
         if (!wasPlaying) {
           el.pause();
           el.currentTime = 0;
         }
+        el.muted = wasMuted;
       })
       .catch(() => {
         // ここで失敗しても、各playSfx呼び出し自体が(ユーザー操作を経た後の)
         // 通常の再生試行を行うため、致命的ではない
+        el.muted = wasMuted;
       });
   }
 }
