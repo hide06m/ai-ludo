@@ -71,7 +71,10 @@ export function Scene({
   );
 
   return (
-    <Canvas shadows camera={{ position: getInitialCameraPosition(), fov: 42 }}>
+    // near/farはThree.jsの既定(0.1〜1000)のままだと、このシーンの実際のスケール
+    // (カメラ距離は最大でも56)に対して広すぎ、深度バッファの精度不足によるちらつき
+    // (Z-fighting、特にAndroid端末で顕著)の原因になるため、実際に使う範囲に絞り込む
+    <Canvas shadows camera={{ position: getInitialCameraPosition(), fov: 42, near: 1, far: 120 }}>
       <color attach="background" args={['#151515']} />
       <ambientLight intensity={0.4} />
       {/* キーライト: 主光源。影を落とす */}

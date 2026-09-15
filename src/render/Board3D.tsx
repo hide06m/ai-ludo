@@ -34,9 +34,13 @@ const YARD_CELL_HEX: Record<Color, string> = Object.fromEntries(
 // 盤面ベース(boxGeometry, y=0.005, 高さ0.05)の上面のワールドY座標
 const BOARD_TOP_Y = 0.005 + 0.05 / 2;
 
+// 盤面ベースの上に重ねて描くマス目・格子線・矢印等の間隔。近すぎると深度バッファの
+// 精度不足でちらつく(Z-fighting、特にAndroid端末で顕著だった)ため、
+// 見た目では気にならない範囲で十分な間隔を空けている
+
 function Cell({ x, z, color, size = 0.92 }: { x: number; z: number; color: string; size?: number }) {
   return (
-    <mesh position={[x, BOARD_TOP_Y + 0.002, z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+    <mesh position={[x, BOARD_TOP_Y + 0.02, z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
       <planeGeometry args={[size, size]} />
       <meshStandardMaterial color={color} roughness={0.7} />
     </mesh>
@@ -52,13 +56,13 @@ function GridLines() {
   for (let i = 0; i <= GRID_SIZE; i++) {
     const pos = -half + i;
     lines.push(
-      <mesh key={`v-${i}`} position={[pos, BOARD_TOP_Y + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh key={`v-${i}`} position={[pos, BOARD_TOP_Y + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[lineWidth, GRID_SIZE]} />
         <meshStandardMaterial color={lineColor} />
       </mesh>,
     );
     lines.push(
-      <mesh key={`h-${i}`} position={[0, BOARD_TOP_Y + 0.001, pos]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh key={`h-${i}`} position={[0, BOARD_TOP_Y + 0.01, pos]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[GRID_SIZE, lineWidth]} />
         <meshStandardMaterial color={lineColor} />
       </mesh>,
@@ -88,7 +92,7 @@ function TableTop({ size }: { size: number }) {
 function StartLabel({ color }: { color: Color }) {
   const { x, z, rotationY } = startLabelTransform(color);
   return (
-    <group position={[x, BOARD_TOP_Y + 0.01, z]} rotation={[0, rotationY, 0]}>
+    <group position={[x, BOARD_TOP_Y + 0.1, z]} rotation={[0, rotationY, 0]}>
       <Text rotation={[-Math.PI / 2, 0, 0]} fontSize={0.2} color="#222" anchorX="center" anchorY="middle">
         START
       </Text>
@@ -151,7 +155,7 @@ function TurnArrow({ color }: { color: Color }) {
   const rotationY = armRotationY(color);
   const geometry = useMemo(() => buildArrowGeometry(), []);
   return (
-    <mesh geometry={geometry} position={[x, BOARD_TOP_Y + 0.006, z]} rotation={[0, rotationY, 0]}>
+    <mesh geometry={geometry} position={[x, BOARD_TOP_Y + 0.06, z]} rotation={[0, rotationY, 0]}>
       <meshBasicMaterial color="#ffffff" side={THREE.DoubleSide} />
     </mesh>
   );
