@@ -451,6 +451,19 @@ button {
   top: auto;
   bottom: 166px;
 }
+
+/* Renderへの反映確認用のビルドバージョン表示。読めればよいだけの補助情報なので
+   控えめに、画面左上の隅に固定表示する */
+.build-version {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  font-size: 11px;
+  font-family: monospace;
+  color: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  z-index: 10;
+}
 .move-choices {
   display: flex;
   gap: 6px;

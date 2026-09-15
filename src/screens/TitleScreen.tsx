@@ -8,6 +8,9 @@ export function TitleScreen() {
   const rules = useAppStore((s) => s.rules);
   return (
     <div className="screen screen-center">
+      {/* Renderへのデプロイが最新コミットまで反映されているか目視で確認できるよう、
+          ビルド時点のGitコミットハッシュを表示する */}
+      <div className="build-version">#{__APP_COMMIT__}</div>
       <SoundToggleButton />
       <h1 className="title-logo-heading">
         <img src="/logo.png" alt="ルドー" className="title-logo" />
