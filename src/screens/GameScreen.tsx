@@ -230,9 +230,13 @@ export function GameScreen() {
           >
             サイコロを振る
           </button>
-          {isHumanTurn && game.phase === 'awaiting_move' && legalMoves.length > 0 && (
-            <div className="move-hint">盤面のコマをクリックして選んでください</div>
-          )}
+          <div
+            className={`move-hint${
+              isHumanTurn && game.phase === 'awaiting_move' && legalMoves.length > 0 ? '' : ' move-hint-hidden'
+            }`}
+          >
+            盤面のコマをクリックして選んでください
+          </div>
         </div>
 
         <div className="log-panel" ref={logRef}>

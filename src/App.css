@@ -473,6 +473,11 @@ button {
   padding: 4px 10px;
   border-radius: 999px;
 }
+/* コマを選べる時だけ表示するが、表示/非表示の切り替えでサイコロを振る
+   ボタンの位置がズレないよう、非表示時もvisibility:hiddenで高さは確保する */
+.move-hint-hidden {
+  visibility: hidden;
+}
 
 .log-panel {
   font-size: 13px;
