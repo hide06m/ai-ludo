@@ -627,6 +627,9 @@ button {
     order: 3;
     max-width: none;
     width: 100%;
+    /* ログが空の状態と発生後で高さが変わり、その上のサイコロを振るボタンが
+       ズレてしまわないよう、最初から最大高さぶんの領域を確保しておく */
+    min-height: 72px;
     max-height: 72px;
     text-align: left;
   }
