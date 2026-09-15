@@ -109,7 +109,16 @@ export function setMuted(value: boolean) {
  * 停止しておくことで、以降(setTimeoutなどで遅延させて呼ぶ場合も含め)の再生が
  * 安定するようにする。
  */
+let audioUnlocked = false;
+
 function unlockAllAudioElements() {
+  // スマホのタッチ操作ではpointerdownとtouchstartの両方が発火し、この関数が
+  // 二重に呼ばれることがある。ミュート状態の退避・復元が競合すると、後から
+  // 解決した方のPromiseが先に元へ戻した方を上書きしてBGMがミュートされた
+  // ままになってしまうため、初回の1回だけ実行するようにガードする
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+
   const targets = [...(Object.keys(SFX_FILES) as SfxName[]).map(getSfxElement), getBgmElement()];
   for (const el of targets) {
     const wasPlaying = !el.paused;
