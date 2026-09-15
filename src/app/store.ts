@@ -379,11 +379,13 @@ function handleServerMessage(
       });
       return;
     case 'error':
-      if (message.code === 'room_not_found') {
+      if (message.code === 'room_not_found' && get().online.room) {
         // 部屋自体がサーバー上から破棄されている(長時間の通信断などで)。
         // これ以上リトライしても無駄なので、自動再接続ループに入らないよう
         // タイトルへ戻し、セッション情報も消す。何も言わずに画面が切り替わるだけだと
-        // ユーザーが混乱するため、理由をはっきり伝える
+        // ユーザーが混乱するため、理由をはっきり伝える。
+        // ただし、まだ一度も部屋に入れていない(=部屋に入る画面でコードを
+        // 間違えただけ)場合はここに該当させず、下の分岐でその場にエラー表示する
         get().online.client?.disconnect();
         clearLastSession();
         set(() => ({ mode: 'cpu', screen: 'title', game: null, lastCapture: null, online: INITIAL_ONLINE_STATE }));

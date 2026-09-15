@@ -161,4 +161,15 @@ if (typeof window !== 'undefined') {
       bgmEl?.play().catch((err) => console.warn('[audio] resume on visible failed', err));
     }
   });
+
+  // AirPods等のBluetoothオーディオ機器を再生中に接続すると、既に再生を始めていた
+  // BGM要素だけが出力先の切り替えに追従せず無音になることがある(効果音は接続後に
+  // 都度新しく生成されるため影響を受けない)。ミュートボタンを押し直す(pause→play)と
+  // 直るのはこのためで、それをdevicechangeイベントで自動的に行う
+  navigator.mediaDevices?.addEventListener?.('devicechange', () => {
+    if (bgmShouldBePlaying && !muted && bgmEl && !bgmEl.paused) {
+      bgmEl.pause();
+      bgmEl.play().catch((err) => console.warn('[audio] resume after devicechange failed', err));
+    }
+  });
 }
