@@ -123,9 +123,13 @@ function unlockAllAudioElements() {
   for (const el of targets) {
     const wasPlaying = !el.paused;
     // play()の解決からpause()が効くまでの間、実際に音が鳴ってしまうのを防ぐため
-    // 解錠のための再生自体をミュートした状態で行う
+    // 解錠のための再生自体を無音の状態で行う。古いiOS Safari(iPhone 7 Plus等)では
+    // muted指定だけだと反映が間に合わず一瞬鳴ってしまうことがあるため、
+    // volumeも0にして二重に無音化する
     const wasMuted = el.muted;
+    const wasVolume = el.volume;
     el.muted = true;
+    el.volume = 0;
     el.play()
       .then(() => {
         if (!wasPlaying) {
@@ -133,11 +137,13 @@ function unlockAllAudioElements() {
           el.currentTime = 0;
         }
         el.muted = wasMuted;
+        el.volume = wasVolume;
       })
       .catch(() => {
         // ここで失敗しても、各playSfx呼び出し自体が(ユーザー操作を経た後の)
         // 通常の再生試行を行うため、致命的ではない
         el.muted = wasMuted;
+        el.volume = wasVolume;
       });
   }
 }
