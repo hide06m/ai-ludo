@@ -1,6 +1,16 @@
 import type { ClientMessage, ServerMessage } from './protocol';
 
-const WS_URL = (import.meta.env.VITE_WS_URL as string | undefined) ?? 'ws://localhost:8787';
+/**
+ * 接続先。VITE_WS_URLが指定されていればそれを使う。未指定なら、開発時はローカルの
+ * `npm run server`、本番(Cloudflare Workers)では同じドメインの /ws につなぐ
+ */
+function defaultWsUrl(): string {
+  if (import.meta.env.DEV) return 'ws://localhost:8787';
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${location.host}/ws`;
+}
+
+const WS_URL = (import.meta.env.VITE_WS_URL as string | undefined) ?? defaultWsUrl();
 
 export type OnlineConnectionStatus = 'connecting' | 'open' | 'closed' | 'error';
 

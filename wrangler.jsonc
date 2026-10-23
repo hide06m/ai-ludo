@@ -1,0 +1,17 @@
+// Cloudflare Workers へのデプロイ設定(npm run deploy)。
+// 1つのWorkerで、フロントエンドの静的ファイル(dist)とオンライン対戦サーバー(/ws)の両方を配信する
+{
+  "name": "ai-ludo",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    // /ws だけWorkerのコードを通し、それ以外は静的ファイルとして直接配信する
+    "run_worker_first": ["/ws"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "LUDO_SERVER", "class_name": "LudoServer" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LudoServer"] }]
+}

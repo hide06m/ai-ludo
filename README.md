@@ -50,7 +50,20 @@ npm run build   # 型チェック + 本番ビルド
 ゲームロジックをそのまま再利用)。ローカルでは `npm run server` で起動するだけで動作するが、実際に友達とインターネット
 越しに遊ぶには両方(フロントエンドの静的ビルドと、このWebSocketサーバー)を公開する必要がある。
 
-### デプロイ(Render想定)
+### デプロイ(Cloudflare Workers、現在の公開先)
+
+Renderの無料枠(月5GBの通信量)を使い切って停止したため、Cloudflare Workers へ移した。
+1つのWorker([wrangler.jsonc](./wrangler.jsonc))が、フロントエンドの静的ファイル(`dist`)と
+オンライン対戦サーバー(`/ws`、Durable Object `LudoServer`、[worker/index.ts](./worker/index.ts))の両方を配信する。
+静的ファイルの通信量は無料プランでも無制限。部屋管理のロジックはNode.js版と共通([server/hub.ts](./server/hub.ts))。
+
+```bash
+npx wrangler login   # 初回のみ(ブラウザでCloudflareアカウントの承認)
+npm run dev:worker   # ビルドして本番と同じ構成をローカルで起動(http://localhost:8787)
+npm run deploy       # ビルドして公開
+```
+
+### デプロイ(Render、旧構成)
 
 このリポジトリには [render.yaml](./render.yaml) が用意されており、Renderの Blueprint 機能で
 「`ai-ludo-server`(WebSocketサーバー)」と「`ai-ludo-web`(フロントエンドの静的サイト)」の2サービスを
